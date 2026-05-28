@@ -45,24 +45,6 @@ function CodeBlock({ code }: { code: string }) {
   );
 }
 
-function Shot({ src, alt }: { src: string; alt: string }) {
-  const [missing, setMissing] = useState(false);
-  return (
-    <figure className="shot">
-      {missing ? (
-        <div className="shot-placeholder">
-          <span>📷</span>
-          <small>Screenshot: {alt}</small>
-        </div>
-      ) : (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={src} alt={alt} onError={() => setMissing(true)} />
-      )}
-      <figcaption>{alt}</figcaption>
-    </figure>
-  );
-}
-
 export default function Setup() {
   const [os, setOs] = useState<OS>("mac");
   const [apiKey, setApiKey] = useState("YOUR_API_KEY");
@@ -126,10 +108,6 @@ export default function Setup() {
                 <strong>PowerShell</strong>, and press <kbd>Enter</kbd>.
               </p>
             )}
-            <Shot
-              src={os === "mac" ? "/setup/mac-terminal.png" : "/setup/win-powershell.png"}
-              alt={os === "mac" ? "Opening Terminal on Mac" : "Opening PowerShell on Windows"}
-            />
           </li>
 
           <li>
@@ -173,7 +151,6 @@ export default function Setup() {
               <strong>LunaTechs DeepSeek → DeepSeek V4 Pro</strong>, then type what
               you want to build. That’s it!
             </p>
-            <Shot src="/setup/opencode-model.png" alt="Selecting DeepSeek V4 Pro in OpenCode" />
           </li>
         </ol>
 
