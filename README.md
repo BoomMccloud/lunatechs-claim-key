@@ -50,11 +50,15 @@ npm run stats     # total / claimed / remaining
 
 ## Deploy to Vercel
 
-1. Push to a Git repo and import into Vercel.
-2. Set all env vars from `.env.example` in the Vercel project settings.
-3. Verify a sending domain in Resend and set `EMAIL_FROM` to an address on it.
-4. Run `npm run seed` locally (or from any machine with `DATABASE_URL`) to load the pool —
-   the same database backs production.
+See **[DEPLOY.md](DEPLOY.md)** for the full step-by-step runbook (cloud Postgres,
+seeding keys, env vars, smoke test, and event-day operations).
+
+Quick version:
+
+1. Provision a cloud Postgres (e.g. Neon) — Vercel can't reach a local DB.
+2. Put your keys in `keys.txt` and run `npm run seed` against that DB.
+3. Import the repo into Vercel and set all env vars from `.env.example`.
+4. Deploy, then smoke-test the live URL.
 
 ## Security notes
 
