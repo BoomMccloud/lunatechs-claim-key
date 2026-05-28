@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { sql } from "@/lib/db";
 import { verifyOtp, MAX_OTP_ATTEMPTS } from "@/lib/otp";
-import { claimKey, PoolEmptyError } from "@/lib/keys";
+import { claimKey, PoolEmptyError, getDeviceClaim, recordDeviceClaim } from "@/lib/keys";
 import { createSession, SESSION_COOKIE, SESSION_TTL_MS } from "@/lib/session";
+import {
+  DEVICE_COOKIE,
+  DEVICE_TTL_MS,
+  createDeviceToken,
+  readDeviceId,
+} from "@/lib/device";
 import { verifyOtpSchema } from "@/lib/validation";
 
 export const runtime = "nodejs";
@@ -30,6 +36,23 @@ export async function POST(req: NextRequest) {
   }
 
   const { email, code } = parsed.data;
+
+  // Resolve the device id, minting a new one if the cookie is missing/invalid.
+  let deviceId = readDeviceId(req.cookies.get(DEVICE_COOKIE)?.value);
+  let newDeviceToken: string | null = null;
+  if (!deviceId) {
+    const created = createDeviceToken();
+    deviceId = created.id;
+    newDeviceToken = created.token;
+  }
+
+  const priorClaim = await getDeviceClaim(deviceId);
+  if (priorClaim && priorClaim !== email) {
+    return NextResponse.json(
+      { error: "This device has already claimed a key." },
+      { status: 403 }
+    );
+  }
 
   // Latest unconsumed, unexpired OTP for this email.
   const [otp] = await sql<OtpRow[]>`
@@ -87,6 +110,8 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  await recordDeviceClaim(deviceId, email);
+
   const res = NextResponse.json({ apiKey });
   res.cookies.set(SESSION_COOKIE, createSession(email), {
     httpOnly: true,
@@ -95,5 +120,14 @@ export async function POST(req: NextRequest) {
     path: "/",
     maxAge: Math.floor(SESSION_TTL_MS / 1000),
   });
+  if (newDeviceToken) {
+    res.cookies.set(DEVICE_COOKIE, newDeviceToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: Math.floor(DEVICE_TTL_MS / 1000),
+    });
+  }
   return res;
 }

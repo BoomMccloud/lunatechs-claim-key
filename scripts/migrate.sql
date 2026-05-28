@@ -30,3 +30,11 @@ CREATE INDEX IF NOT EXISTS claim_otps_email_created_idx
 
 CREATE INDEX IF NOT EXISTS claim_otps_ip_created_idx
   ON claim_otps (ip, created_at);
+
+-- One claim per device. Set via a signed, long-lived cookie so the same browser
+-- can't grab multiple keys using different email addresses.
+CREATE TABLE IF NOT EXISTS claim_devices (
+  device_id      TEXT PRIMARY KEY,
+  claimed_email  TEXT NOT NULL,
+  claimed_at     TIMESTAMPTZ NOT NULL DEFAULT now()
+);

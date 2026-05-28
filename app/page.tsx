@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 
 type Step = "request" | "verify" | "done";
 
@@ -50,6 +51,9 @@ export default function Home() {
       return;
     }
     setApiKey(data.apiKey);
+    try {
+      sessionStorage.setItem("claimedApiKey", data.apiKey);
+    } catch {}
     setStep("done");
   }
 
@@ -179,9 +183,18 @@ export default function Home() {
             </div>
             {error && <p className="error">{error}</p>}
             {notice && <p className="notice">{notice}</p>}
+            <Link href="/setup" className="cta-link">
+              Next: set up OpenCode →
+            </Link>
           </div>
         )}
 
+        <p className="footer">
+          Already have a key?{" "}
+          <Link href="/setup" className="footer-link">
+            Set up OpenCode
+          </Link>
+        </p>
         <p className="footer">
           <b>DeepSeek</b> × <b>OpenCode</b> · sponsored by <b>Alibaba Cloud</b>
         </p>

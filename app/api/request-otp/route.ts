@@ -5,6 +5,13 @@ import { generateOtp, hashOtp, OTP_TTL_MS } from "@/lib/otp";
 import { sendOtpEmail } from "@/lib/email";
 import { isRateLimited } from "@/lib/ratelimit";
 import { requestOtpSchema } from "@/lib/validation";
+import {
+  DEVICE_COOKIE,
+  DEVICE_TTL_MS,
+  createDeviceToken,
+  readDeviceId,
+} from "@/lib/device";
+import { getDeviceClaim } from "@/lib/keys";
 
 export const runtime = "nodejs";
 
@@ -48,6 +55,17 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const deviceId = readDeviceId(req.cookies.get(DEVICE_COOKIE)?.value);
+  if (deviceId) {
+    const deviceEmail = await getDeviceClaim(deviceId);
+    if (deviceEmail && deviceEmail !== email) {
+      return NextResponse.json(
+        { error: "This device has already claimed a key." },
+        { status: 403 }
+      );
+    }
+  }
+
   const ip = clientIp(req);
   if (await isRateLimited(email, ip)) {
     return NextResponse.json(
@@ -74,5 +92,16 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  return NextResponse.json({ ok: true });
+  const res = NextResponse.json({ ok: true });
+  if (!deviceId) {
+    const { token } = createDeviceToken();
+    res.cookies.set(DEVICE_COOKIE, token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: Math.floor(DEVICE_TTL_MS / 1000),
+    });
+  }
+  return res;
 }
