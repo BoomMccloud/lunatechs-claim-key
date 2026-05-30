@@ -37,7 +37,7 @@ const sql = postgres(process.env.DATABASE_URL, {
 try {
   // The N newest keys by id (seed order). These are the "last" ones uploaded.
   const targets = await sql`
-    SELECT id, api_key, claimed_by_email
+    SELECT id, api_key, share_count
     FROM claim_keys
     ORDER BY id DESC
     LIMIT ${count}
@@ -48,8 +48,8 @@ try {
     process.exit(0);
   }
 
-  const claimed = targets.filter((r) => r.claimed_by_email);
-  const unclaimed = targets.filter((r) => !r.claimed_by_email);
+  const claimed = targets.filter((r) => r.share_count > 0);
+  const unclaimed = targets.filter((r) => r.share_count === 0);
   const toDelete = force ? targets : unclaimed;
 
   console.log(`Newest ${targets.length} keys selected (by id).`);
@@ -58,7 +58,7 @@ try {
 
   if (claimed.length && !force) {
     console.log("\nSkipping these CLAIMED keys (pass --force to delete them too):");
-    for (const r of claimed) console.log(`  id=${r.id} claimed_by=${r.claimed_by_email}`);
+    for (const r of claimed) console.log(`  id=${r.id} share_count=${r.share_count}`);
   }
 
   if (toDelete.length === 0) {

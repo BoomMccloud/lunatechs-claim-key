@@ -10,7 +10,10 @@ export class PoolEmptyError extends Error {
 // Returns the key already claimed by this email, or null.
 export async function getClaimedKey(email: string): Promise<string | null> {
   const [row] = await sql<{ api_key: string }[]>`
-    SELECT api_key FROM claim_keys WHERE claimed_by_email = ${email} LIMIT 1
+    SELECT k.api_key FROM claim_shares s
+    JOIN claim_keys k ON s.key_id = k.id
+    WHERE s.email = ${email}
+    LIMIT 1
   `;
   return row?.api_key ?? null;
 }
@@ -35,29 +38,70 @@ export async function recordDeviceClaim(
   `;
 }
 
-// Allocates an unclaimed key to the email and returns it. Idempotent: if the email
-// already has a key, returns that one. Throws PoolEmptyError when nothing is left.
+// Allocates a key in a round-robin fashion to the email and returns it.
+// Idempotent: if the email already has a key, returns that one.
+// Throws PoolEmptyError when no keys exist in the database.
 export async function claimKey(email: string): Promise<string> {
   const existing = await getClaimedKey(email);
   if (existing) return existing;
 
   try {
-    const [row] = await sql<{ api_key: string }[]>`
-      UPDATE claim_keys
-      SET claimed_by_email = ${email}, claimed_at = now()
-      WHERE id = (
-        SELECT id FROM claim_keys
-        WHERE claimed_by_email IS NULL
-        ORDER BY id
+    let apiKey: string | null = null;
+    await sql.begin(async (sql) => {
+      // Prevent concurrent round-robin calls from picking the same key
+      await sql`LOCK TABLE claim_shares IN EXCLUSIVE MODE`;
+
+      // Double-check inside transaction to avoid race conditions
+      const [existingRow] = await sql<{ api_key: string }[]>`
+        SELECT k.api_key FROM claim_shares s
+        JOIN claim_keys k ON s.key_id = k.id
+        WHERE s.email = ${email}
         LIMIT 1
-        FOR UPDATE SKIP LOCKED
-      )
-      RETURNING api_key
-    `;
-    if (!row) throw new PoolEmptyError();
-    return row.api_key;
+      `;
+      if (existingRow) {
+        apiKey = existingRow.api_key;
+        return;
+      }
+
+      // Get count of total claims
+      const [countRow] = await sql<{ count: string }[]>`
+        SELECT count(*)::int AS count FROM claim_shares
+      `;
+      const totalClaims = parseInt(countRow?.count ?? "0", 10);
+
+      // Get all keys ordered by id asc (to guarantee round-robin order)
+      const dbKeys = await sql<{ id: string; api_key: string }[]>`
+        SELECT id, api_key FROM claim_keys ORDER BY id ASC
+      `;
+      if (dbKeys.length === 0) {
+        throw new PoolEmptyError();
+      }
+
+      const nextIndex = totalClaims % dbKeys.length;
+      const selectedKey = dbKeys[nextIndex];
+
+      // Insert the claim mapping
+      await sql`
+        INSERT INTO claim_shares (email, key_id)
+        VALUES (${email}, ${selectedKey.id})
+      `;
+
+      // Update the share count on the key
+      await sql`
+        UPDATE claim_keys
+        SET share_count = share_count + 1
+        WHERE id = ${selectedKey.id}
+      `;
+
+      apiKey = selectedKey.api_key;
+    });
+
+    if (!apiKey) {
+      throw new Error("Failed to allocate key");
+    }
+    return apiKey;
   } catch (err: unknown) {
-    // Unique index race: another concurrent request claimed for this same email.
+    // Unique index race check: another concurrent request claimed for this same email.
     if (err && typeof err === "object" && "code" in err && err.code === "23505") {
       const claimed = await getClaimedKey(email);
       if (claimed) return claimed;

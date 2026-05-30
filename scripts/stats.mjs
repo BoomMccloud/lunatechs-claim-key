@@ -1,4 +1,4 @@
-// Prints pool counts: total / claimed / remaining. Run during the event to monitor.
+// Prints pool counts: total / shared / breakdown. Run during the event to monitor.
 //   node scripts/stats.mjs
 
 import postgres from "postgres";
@@ -16,16 +16,30 @@ const sql = postgres(process.env.DATABASE_URL, {
 });
 
 try {
-  const [stats] = await sql`
-    SELECT
-      count(*)::int AS total,
-      count(claimed_by_email)::int AS claimed,
-      (count(*) - count(claimed_by_email))::int AS remaining
-    FROM claim_keys
+  const [keyStats] = await sql`
+    SELECT count(*)::int AS total FROM claim_keys
   `;
-  console.log(`Total:     ${stats.total}`);
-  console.log(`Claimed:   ${stats.claimed}`);
-  console.log(`Remaining: ${stats.remaining}`);
+
+  const [shareStats] = await sql`
+    SELECT count(*)::int AS total_shares FROM claim_shares
+  `;
+
+  const keyBreakdown = await sql`
+    SELECT id, api_key, share_count
+    FROM claim_keys
+    ORDER BY id ASC
+  `;
+
+  console.log(`Total Keys in Pool:      ${keyStats.total}`);
+  console.log(`Total Shares Allocated:   ${shareStats.total_shares}`);
+  console.log("\nSharing Breakdown:");
+  console.log("----------------------------------------");
+  for (const row of keyBreakdown) {
+    const maskedKey = row.api_key.length > 12 
+      ? `${row.api_key.slice(0, 8)}...${row.api_key.slice(-4)}` 
+      : row.api_key;
+    console.log(`Key ID ${row.id} (${maskedKey}): shared ${row.share_count} times`);
+  }
 } catch (err) {
   console.error("Failed:", err.message ?? err);
   process.exitCode = 1;
