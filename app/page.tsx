@@ -77,8 +77,8 @@ export default function Home() {
   }
 
   return (
-    <main>
-      <div className="card">
+    <main className="home-page">
+      <div className="card home-card">
         <div className="brand">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/lunatechs-logo.png" alt="LunaTechs" />

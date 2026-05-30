@@ -401,3 +401,104 @@ kbd {
   border-radius: 7px;
 }
 
+/* ---- Home Page 1.5x Scaling (50% bigger for mobile readability) ---- */
+.home-card {
+  max-width: 630px;
+  padding: 48px;
+  border-radius: 27px;
+}
+
+@media (max-width: 640px) {
+  .home-card {
+    padding: 24px;
+    border-radius: 18px;
+  }
+}
+
+.home-card .brand {
+  margin-bottom: 30px;
+}
+
+.home-card .brand img {
+  width: 210px;
+}
+
+.home-card .eyebrow {
+  font-size: 18px;
+  letter-spacing: 2px;
+  margin-top: 15px;
+}
+
+.home-card h1 {
+  font-size: 33px;
+  margin-bottom: 6px;
+}
+
+.home-card .subtitle {
+  font-size: 21px;
+  margin-bottom: 36px;
+}
+
+.home-card label {
+  font-size: 19.5px;
+  margin-bottom: 9px;
+}
+
+.home-card .field {
+  margin-bottom: 24px;
+}
+
+.home-card input {
+  padding: 18px 21px;
+  font-size: 22.5px;
+  border-radius: 15px;
+}
+
+.home-card input.otp {
+  font-size: 33px;
+  letter-spacing: 12px;
+}
+
+.home-card button {
+  padding: 18px 21px;
+  font-size: 22.5px;
+  border-radius: 15px;
+}
+
+.home-card .link {
+  font-size: 19.5px;
+  padding: 18px 0 0;
+}
+
+.home-card .keybox {
+  font-size: 21px;
+  padding: 21px;
+  border-radius: 15px;
+  margin-bottom: 24px;
+}
+
+.home-card .row {
+  gap: 15px;
+}
+
+.home-card .error {
+  font-size: 19.5px;
+  margin: 6px 0 24px;
+}
+
+.home-card .notice {
+  font-size: 19.5px;
+  margin-top: 12px;
+}
+
+.home-card .footer {
+  margin-top: 33px;
+  font-size: 18px;
+}
+
+.home-card .cta-link {
+  margin-top: 27px;
+  font-size: 21px;
+}
+
+
